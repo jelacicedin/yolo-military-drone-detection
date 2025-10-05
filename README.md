@@ -141,6 +141,11 @@ The user interface provides:
 ![No False Detection](images/no_detection.png)
 *System correctly ignores birds (storks) with confidence threshold set to 0.40. Gray "Status: CLEAR" indicates no UAV threats detected, demonstrating effective discrimination between natural aerial objects and military drones.*
 
+**Video Processing Demonstration:**
+
+![Video Processing](images/video_processing.gif)
+*Real-time video processing with frame-by-frame drone detection. The system maintains high performance while annotating each frame with bounding boxes, confidence scores, and tracking information. Progress bar indicates processing status.*
+
 ### Detection Results
 
 The application displays:

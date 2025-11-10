@@ -1,4 +1,4 @@
-# app.py - Military Drone Detection Streamlit App
+# app.py - Military Drone Detection with Tracking
 
 import streamlit as st
 from ultralytics import YOLO
@@ -19,9 +19,9 @@ def load_model():
     st.success("✅ Model loaded")
     return YOLO(model_path)
 
-def add_overlay_stats(img, boxes, inference_time):
+def add_overlay_stats(img, boxes, inference_time, tracker_id=None):
     overlay = img.copy()
-    cv2.rectangle(overlay, (10, 10), (310, 130), (0, 0, 0), -1)
+    cv2.rectangle(overlay, (10, 10), (310, 150), (0, 0, 0), -1)
     img = cv2.addWeighted(overlay, 0.6, img, 0.4, 0)
     
     font = cv2.FONT_HERSHEY_SIMPLEX
@@ -35,6 +35,10 @@ def add_overlay_stats(img, boxes, inference_time):
         avg_conf = float(boxes.conf.mean())
         cv2.putText(img, f"Confidence: {avg_conf:.1%}", (20, y + 30), font, 0.7, color, 2)
         cv2.putText(img, f"Time: {inference_time:.1f}ms", (20, y + 60), font, 0.7, color, 2)
+        
+        if tracker_id is not None:
+            unique_ids = len(set(tracker_id.tolist()))
+            cv2.putText(img, f"Tracked IDs: {unique_ids}", (20, y + 90), font, 0.7, (0, 200, 255), 2)
     else:
         cv2.putText(img, "Drones: 0", (20, y), font, 0.7, color, 2)
         cv2.putText(img, "Status: CLEAR", (20, y + 30), font, 0.7, color, 2)
@@ -57,9 +61,10 @@ def main():
     
     tab1, tab2, tab3 = st.tabs(["📷 Image Upload", "🎥 Video Upload", "📹 Webcam"])
     
+    # TAB 1: Image Upload
     with tab1:
         st.header("Upload Image")
-        uploaded_file = st.file_uploader("Choose an image...", type=['jpg', 'jpeg', 'png'])
+        uploaded_file = st.file_uploader("Choose an image...", type=['jpg', 'jpeg', 'png'], key="image_uploader")
         
         if uploaded_file:
             image = Image.open(uploaded_file)
@@ -90,13 +95,19 @@ def main():
             else:
                 st.info("✅ No drones detected")
     
+    # TAB 2: Video Upload with Tracking
     with tab2:
         st.header("Upload Video")
-        video_file = st.file_uploader("Choose a video...", type=['mp4', 'avi', 'mov'], key="video_uploader")
+        st.info("ℹ️ Note: Tab may switch after upload - click Video tab again if needed")
+        video_file = st.file_uploader("Choose a video...", type=['mp4', 'avi', 'mov', 'mkv'], key="video_uploader")
+        
+        enable_tracking = st.checkbox("Enable Tracking", value=True, key="enable_tracking", 
+                                      help="Track drones across frames with unique IDs and trajectories")
         
         if video_file and st.button("🎬 Process Video"):
-            tfile = tempfile.NamedTemporaryFile(delete=False)
+            tfile = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
             tfile.write(video_file.read())
+            tfile.close()
             
             with st.spinner("Processing video..."):
                 cap = cv2.VideoCapture(tfile.name)
@@ -105,12 +116,18 @@ def main():
                 height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                 total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
                 
+                # Suppress OpenH264 warnings
+                import sys
+                import io
+                old_stderr = sys.stderr
+                sys.stderr = io.StringIO()
+                
                 output_path = "output_detection.mp4"
-                # Try different codecs for compatibility
-                fourcc = cv2.VideoWriter_fourcc(*'avc1')  # H.264 codec
+                fourcc = cv2.VideoWriter_fourcc(*'avc1')
                 out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
                 
-                # If avc1 fails, fallback to XVID
+                sys.stderr = old_stderr
+                
                 if not out.isOpened():
                     fourcc = cv2.VideoWriter_fourcc(*'XVID')
                     output_path = "output_detection.avi"
@@ -118,47 +135,120 @@ def main():
                 
                 progress_bar = st.progress(0)
                 frame_count = 0
+                unique_drone_ids = set()
+                track_history = {}
                 
                 while cap.isOpened():
                     ret, frame = cap.read()
                     if not ret:
                         break
                     
-                    results = model(frame, conf=confidence, verbose=False)
-                    annotated_frame = results[0].plot()
-                    out.write(annotated_frame)
+                    if enable_tracking:
+                        results = model.track(frame, conf=confidence, persist=True, verbose=False)
+                    else:
+                        results = model(frame, conf=confidence, verbose=False)
                     
+                    annotated_frame = results[0].plot()
+                    
+                    # Draw trajectories
+                    if enable_tracking and results[0].boxes.id is not None:
+                        boxes = results[0].boxes.xywh.cpu()
+                        track_ids = results[0].boxes.id.int().cpu().tolist()
+                        
+                        for box, track_id in zip(boxes, track_ids):
+                            x, y, w, h = box
+                            
+                            if track_id not in track_history:
+                                track_history[track_id] = []
+                            
+                            track_history[track_id].append((float(x), float(y)))
+                            
+                            if len(track_history[track_id]) > 50:
+                                track_history[track_id].pop(0)
+                            
+                            # Draw trajectory with shadow
+                            points = np.array(track_history[track_id], dtype=np.int32).reshape((-1, 1, 2))
+                            if len(points) > 1:
+                                cv2.polylines(annotated_frame, [points], False, (0, 0, 0), 5)
+                                cv2.polylines(annotated_frame, [points], False, (0, 255, 255), 3)
+                        
+                        unique_drone_ids.update(track_ids)
+                    
+                    out.write(annotated_frame)
                     frame_count += 1
-                    progress_bar.progress(frame_count / total_frames)
+                    progress_bar.progress(min(frame_count / total_frames, 1.0))
                 
                 cap.release()
                 out.release()
                 
                 st.success("✅ Video processed!")
+                
+                if enable_tracking and unique_drone_ids:
+                    st.info(f"🎯 Tracked {len(unique_drone_ids)} unique drone(s) across {frame_count} frames")
+                
                 st.video(output_path)
                 
                 with open(output_path, 'rb') as f:
                     st.download_button("📥 Download Video", f, "drone_detection.mp4", "video/mp4")
     
+    # TAB 3: Webcam
     with tab3:
         st.header("Real-time Webcam Detection")
         st.info("⚠️ Opens OpenCV window. Press 'q' to quit.")
         
+        enable_webcam_tracking = st.checkbox("Enable Webcam Tracking", value=True, key="webcam_tracking")
+        
         if st.button("📹 Start Webcam"):
             st.warning("Webcam opening...")
             cap = cv2.VideoCapture(0)
+            
+            tracked_drones = set()
+            track_history_webcam = {}
             
             while True:
                 ret, frame = cap.read()
                 if not ret:
                     break
                 
-                results = model(frame, conf=confidence, verbose=False)
+                if enable_webcam_tracking:
+                    results = model.track(frame, conf=confidence, persist=True, verbose=False)
+                else:
+                    results = model(frame, conf=confidence, verbose=False)
+                
                 annotated = results[0].plot()
+                
+                # Draw trajectories
+                if enable_webcam_tracking and results[0].boxes.id is not None:
+                    boxes = results[0].boxes.xywh.cpu()
+                    track_ids = results[0].boxes.id.int().cpu().tolist()
+                    
+                    for box, track_id in zip(boxes, track_ids):
+                        x, y, w, h = box
+                        
+                        if track_id not in track_history_webcam:
+                            track_history_webcam[track_id] = []
+                        
+                        track_history_webcam[track_id].append((float(x), float(y)))
+                        
+                        if len(track_history_webcam[track_id]) > 50:
+                            track_history_webcam[track_id].pop(0)
+                        
+                        points = np.array(track_history_webcam[track_id], dtype=np.int32).reshape((-1, 1, 2))
+                        if len(points) > 1:
+                            cv2.polylines(annotated, [points], False, (0, 0, 0), 5)
+                            cv2.polylines(annotated, [points], False, (0, 255, 255), 3)
+                    
+                    tracked_drones.update(track_ids)
                 
                 fps = 1000 / results[0].speed['inference']
                 cv2.putText(annotated, f'FPS: {fps:.1f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-                cv2.putText(annotated, f'Drones: {len(results[0].boxes)}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                
+                n_drones = len(results[0].boxes)
+                cv2.putText(annotated, f'Drones: {n_drones}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                
+                if enable_webcam_tracking and tracked_drones:
+                    cv2.putText(annotated, f'Tracked IDs: {len(tracked_drones)}', (10, 110), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 200, 255), 2)
                 
                 cv2.imshow('Drone Detection', annotated)
                 
@@ -167,7 +257,11 @@ def main():
             
             cap.release()
             cv2.destroyAllWindows()
-            st.success("✅ Webcam closed")
+            
+            if enable_webcam_tracking and tracked_drones:
+                st.success(f"✅ Webcam closed. Tracked {len(tracked_drones)} unique drone(s)")
+            else:
+                st.success("✅ Webcam closed")
 
 if __name__ == "__main__":
     main()

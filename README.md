@@ -18,26 +18,26 @@ The system employs **YOLO11n (You Only Look Once v11)**, fine-tuned on a fully s
 
 The model is trained to identify the following military drone platforms:
 
--   **Shahed-131 / Shahed-136** (Iranian loitering munitions - "Geran" in Russian service)
--   **Lancet** (Russian loitering munition)
--   **Orlan-10** (Russian reconnaissance UAV)
--   **ZALA 421-16E / ZALA 421-04M** (Russian tactical reconnaissance)
--   **Forpost** (Russian MALE UAV)
--   **Mohajer** (Iranian reconnaissance platform)
--   **Granat-1 / Granat-2 / Granat-4** (Russian tactical UAV series)
--   **SuperCam** (Russian reconnaissance UAV)
--   **Techyon** (Commercial/tactical platform)
--   **DJI Mavic 3** (Commercial drone, military-adapted)
+- **Shahed-131 / Shahed-136** (Iranian loitering munitions - "Geran" in Russian service)
+- **Lancet** (Russian loitering munition)
+- **Orlan-10** (Russian reconnaissance UAV)
+- **ZALA 421-16E / ZALA 421-04M** (Russian tactical reconnaissance)
+- **Forpost** (Russian MALE UAV)
+- **Mohajer** (Iranian reconnaissance platform)
+- **Granat-1 / Granat-2 / Granat-4** (Russian tactical UAV series)
+- **SuperCam** (Russian reconnaissance UAV)
+- **Techyon** (Commercial/tactical platform)
+- **DJI Mavic 3** (Commercial drone, military-adapted)
 
 ## Features
 
--   **Specialized Military UAV Detection:** Fine-tuned specifically for combat and reconnaissance drone platforms, not consumer quadcopters
--   **Synthetic Dataset Training:** Trained on perfectly annotated synthetic data generated with Blender, ensuring zero labeling errors
--   **Real-Time Performance:** Optimized for rapid detection with inference speeds suitable for operational deployment
--   **Multi-Modal Interface:** Three detection modes - static image analysis, video processing, and live webcam surveillance
--   **Comprehensive Web Interface:** Streamlit-based application for easy deployment and testing
--   **Production-Ready Pipeline:** Complete workflow from dataset preparation through training to deployment
--   **Adjustable Sensitivity:** Configurable confidence thresholds to balance detection rate vs. false alarm rate
+- **Specialized Military UAV Detection:** Fine-tuned specifically for combat and reconnaissance drone platforms, not consumer quadcopters
+- **Synthetic Dataset Training:** Trained on perfectly annotated synthetic data generated with Blender, ensuring zero labeling errors
+- **Real-Time Performance:** Optimized for rapid detection with inference speeds suitable for operational deployment
+- **Multi-Modal Interface:** Three detection modes - static image analysis, video processing, and live webcam surveillance
+- **Comprehensive Web Interface:** Streamlit-based application for easy deployment and testing
+- **Production-Ready Pipeline:** Complete workflow from dataset preparation through training to deployment
+- **Adjustable Sensitivity:** Configurable confidence thresholds to balance detection rate vs. false alarm rate
 
 ## Getting Started
 
@@ -96,10 +96,11 @@ python main.py
 ```
 
 This will automatically:
--   Prepare the dataset (split into train/val/test)
--   Train YOLO11n for 100 epochs (~30-60 minutes on GPU)
--   Validate the model performance
--   Save the trained model to `results/military_drone_model/weights/best.pt`
+
+- Prepare the dataset (split into train/val/test)
+- Train YOLO11n for 100 epochs (~30-60 minutes on GPU)
+- Validate the model performance
+- Save the trained model to `results/military_drone_model/weights/best.pt`
 
 ### 6. Launch the application
 
@@ -117,46 +118,46 @@ The application will open in your browser at `http://localhost:8501`.
 
 The user interface provides:
 
--   **Image Upload:** Drag-and-drop support for JPG, JPEG, and PNG formats
--   **Video Processing:** Upload MP4, AVI, or MOV files for frame-by-frame detection
--   **Confidence Control:** Dynamic threshold adjustment (0.0-1.0) for detection sensitivity
--   **Real-Time Camera:** Live webcam integration for continuous surveillance
+- **Image Upload:** Drag-and-drop support for JPG, JPEG, and PNG formats
+- **Video Processing:** Upload MP4, AVI, or MOV files for frame-by-frame detection
+- **Confidence Control:** Dynamic threshold adjustment (0.0-1.0) for detection sensitivity
+- **Real-Time Camera:** Live webcam integration for continuous surveillance
 
 ## Application Interface
 
 ### Main Control Panel
 
-![Application Interface](images/app_interface.png)
-*Streamlit web interface with adjustable confidence threshold slider and three operation modes: Image Upload, Video Processing, and Real-time Webcam Detection.*
+![Application Interface](images/app_interface.webp)
+_Streamlit web interface with adjustable confidence threshold slider and three operation modes: Image Upload, Video Processing, and Real-time Webcam Detection._
 
 ### Detection Examples
 
 **Successful Military Drone Detection:**
 
-![Drone Detection](images/drone_detection.png)
-*Military drone detected with high confidence (>80%). The overlay panel displays real-time statistics: drone count, confidence level, and inference time. Green status indicates active threat detection.*
+![Drone Detection](images/drone_detection.webp)
+_Military drone detected with high confidence (>80%). The overlay panel displays real-time statistics: drone count, confidence level, and inference time. Green status indicates active threat detection._
 
 **Robust Against False Positives:**
 
-![No False Detection](images/no_detection.png)
-*System correctly ignores birds (storks) with confidence threshold set to 0.40. Gray "Status: CLEAR" indicates no UAV threats detected, demonstrating effective discrimination between natural aerial objects and military drones.*
+![No False Detection](images/no_detection.webp)
+_System correctly ignores birds (storks) with confidence threshold set to 0.40. Gray "Status: CLEAR" indicates no UAV threats detected, demonstrating effective discrimination between natural aerial objects and military drones._
 
 **Video Processing Demonstration:**
 
 ![Video Processing](images/video_processing.gif)
-*Real-time video processing with frame-by-frame drone detection. The system maintains high performance while annotating each frame with bounding boxes, confidence scores, and tracking information. Progress bar indicates processing status.*
+_Real-time video processing with frame-by-frame drone detection. The system maintains high performance while annotating each frame with bounding boxes, confidence scores, and tracking information. Progress bar indicates processing status._
 
 ### Detection Results
 
 The application displays:
 
--   **Annotated Visualizations:** Bounding boxes drawn around detected UAVs
--   **Real-time Statistics Overlay:** Semi-transparent panel showing detection count, confidence, and inference time
--   **Color-coded Status:** Green for active detections, gray for clear skies
--   **Classification Labels:** "Drone" class identification with confidence scores
--   **Performance Metrics:** Inference timing, detection counts, and FPS monitoring
--   **Detection Statistics:** Tabular summary of all detected objects
--   **Video Export:** Download processed videos with burned-in annotations
+- **Annotated Visualizations:** Bounding boxes drawn around detected UAVs
+- **Real-time Statistics Overlay:** Semi-transparent panel showing detection count, confidence, and inference time
+- **Color-coded Status:** Green for active detections, gray for clear skies
+- **Classification Labels:** "Drone" class identification with confidence scores
+- **Performance Metrics:** Inference timing, detection counts, and FPS monitoring
+- **Detection Statistics:** Tabular summary of all detected objects
+- **Video Export:** Download processed videos with burned-in annotations
 
 ---
 
@@ -176,12 +177,12 @@ The detection pipeline implements:
 
 ### Key Technologies
 
--   **YOLO11n Model:** Nano variant optimized for speed-accuracy balance (2.58M parameters, 6.3 GFLOPs)
--   **Synthetic Training Data:** Blender-generated imagery with perfect annotations
--   **Streamlit Framework:** Rapid prototyping framework for ML model deployment
--   **OpenCV (cv2):** Video I/O, frame processing, and visualization
--   **PyTorch Backend:** Deep learning framework powering YOLO11
--   **640x640 Resolution:** Standardized image size matching dataset specifications
+- **YOLO11n Model:** Nano variant optimized for speed-accuracy balance (2.58M parameters, 6.3 GFLOPs)
+- **Synthetic Training Data:** Blender-generated imagery with perfect annotations
+- **Streamlit Framework:** Rapid prototyping framework for ML model deployment
+- **OpenCV (cv2):** Video I/O, frame processing, and visualization
+- **PyTorch Backend:** Deep learning framework powering YOLO11
+- **640x640 Resolution:** Standardized image size matching dataset specifications
 
 ### Training Configuration
 
@@ -193,7 +194,7 @@ model.train(
     imgsz=640,              # Matches dataset resolution
     batch=16,               # Optimized for 8GB VRAM
     device=0,               # CUDA GPU acceleration
-    
+
     # Augmentation strategy
     hsv_h=0.015,           # Minimal hue shift
     hsv_s=0.7,             # Strong saturation variance
@@ -204,7 +205,7 @@ model.train(
     fliplr=0.5,            # Horizontal flip enabled
     mosaic=1.0,            # Mosaic augmentation
     mixup=0.1,             # Mixup for robustness
-    
+
     # Optimization
     optimizer='auto',       # Automatic selection
     lr0=0.01,              # Initial learning rate
@@ -254,18 +255,20 @@ yolo-military-drone-detection/
 **Source:** Kaggle - banderastepan/drone-detection
 
 **Characteristics:**
--   **Type:** Fully synthetic (Blender-generated)
--   **Resolution:** 640x640 pixels (standardized)
--   **Annotations:** YOLO format (`class_id center_x center_y width height`)
--   **Accuracy:** 100% annotation accuracy (synthetic generation)
--   **Classes:** Single class ("drone") covering 14 military UAV types
--   **Coverage:** Iranian, Russian, and commercial platforms
+
+- **Type:** Fully synthetic (Blender-generated)
+- **Resolution:** 640x640 pixels (standardized)
+- **Annotations:** YOLO format (`class_id center_x center_y width height`)
+- **Accuracy:** 100% annotation accuracy (synthetic generation)
+- **Classes:** Single class ("drone") covering 14 military UAV types
+- **Coverage:** Iranian, Russian, and commercial platforms
 
 **Advantages of Synthetic Data:**
--   Perfect label accuracy (no human annotation errors)
--   Controlled lighting and environmental conditions
--   Diverse viewing angles and distances
--   No operational security concerns
+
+- Perfect label accuracy (no human annotation errors)
+- Controlled lighting and environmental conditions
+- Diverse viewing angles and distances
+- No operational security concerns
 
 ## Configuration
 
@@ -304,15 +307,16 @@ confidence = st.sidebar.slider("Confidence", 0.1, 0.9, 0.25)
 
 Actual metrics achieved after training on military drones dataset:
 
-| Metric | Score |
-|--------|-------|
-| mAP50 | 94.8% |
-| mAP50-95 | 76.1% |
-| Precision | 95.6% |
-| Recall | 90.7% |
+| Metric          | Score       |
+| --------------- | ----------- |
+| mAP50           | 94.8%       |
+| mAP50-95        | 76.1%       |
+| Precision       | 95.6%       |
+| Recall          | 90.7%       |
 | Inference Speed | 2.7ms (GPU) |
 
 **Interpretation:**
+
 - **95.6% Precision:** When model detects a drone, it's correct 95.6% of the time (low false alarm rate)
 - **90.7% Recall:** Successfully detects 9 out of 10 drones present in imagery
 - **2.7ms Inference:** Capable of ~370 FPS processing speed on NVIDIA RTX 4060
@@ -322,62 +326,68 @@ Actual metrics achieved after training on military drones dataset:
 
 This project demonstrates advanced capabilities in:
 
--   ✅ Training specialized object detection models for defense applications
--   ✅ Working with synthetic training data and understanding its advantages
--   ✅ Implementing domain-specific augmentation strategies
--   ✅ Building production ML pipelines from data preparation to deployment
--   ✅ GPU-accelerated model training and inference
--   ✅ Multi-modal inference systems (image/video/realtime)
--   ✅ Performance optimization for operational deployment
--   ✅ Modern ML engineering practices and workflow management
+- ✅ Training specialized object detection models for defense applications
+- ✅ Working with synthetic training data and understanding its advantages
+- ✅ Implementing domain-specific augmentation strategies
+- ✅ Building production ML pipelines from data preparation to deployment
+- ✅ GPU-accelerated model training and inference
+- ✅ Multi-modal inference systems (image/video/realtime)
+- ✅ Performance optimization for operational deployment
+- ✅ Modern ML engineering practices and workflow management
 
 ## Troubleshooting
 
 ### Dataset not found
+
 Ensure you've downloaded and extracted the Kaggle dataset:
+
 ```bash
 ls drone-detection/  # Should show images/ and labels/
 ```
 
 ### CUDA out of memory
+
 Reduce batch size in `main.py`:
+
 ```python
 batch=8  # or batch=4 for 4GB VRAM
 ```
 
 ### Low performance metrics
--   Increase training epochs to 150+
--   Try larger model variant (yolo11s or yolo11m)
--   Verify dataset quality with `python inspect_dataset.py`
+
+- Increase training epochs to 150+
+- Try larger model variant (yolo11s or yolo11m)
+- Verify dataset quality with `python inspect_dataset.py`
 
 ### Slow inference
--   Ensure GPU is being used (check CUDA availability)
--   Export model to ONNX or TensorRT for deployment
--   Consider using smaller input size (imgsz=416)
+
+- Ensure GPU is being used (check CUDA availability)
+- Export model to ONNX or TensorRT for deployment
+- Consider using smaller input size (imgsz=416)
 
 ## Future Enhancements
 
--   [ ] Multi-object tracking for continuous drone monitoring
--   [ ] Integration with radar/acoustic detection systems
--   [ ] Real-time alert system with configurable triggers
--   [ ] Drone trajectory prediction and threat assessment
--   [ ] Thermal/IR camera support for night operations
--   [ ] Edge deployment optimization (Jetson, Coral TPU)
--   [ ] Multi-class detection (drone type classification)
--   [ ] Integration with counter-UAS systems
--   [ ] Geospatial tracking and logging
--   [ ] Distributed detection network coordination
+- [ ] Multi-object tracking for continuous drone monitoring
+- [ ] Integration with radar/acoustic detection systems
+- [ ] Real-time alert system with configurable triggers
+- [ ] Drone trajectory prediction and threat assessment
+- [ ] Thermal/IR camera support for night operations
+- [ ] Edge deployment optimization (Jetson, Coral TPU)
+- [ ] Multi-class detection (drone type classification)
+- [ ] Integration with counter-UAS systems
+- [ ] Geospatial tracking and logging
+- [ ] Distributed detection network coordination
 
 ## Operational Considerations
 
 **Disclaimer:** This is an educational/research project demonstrating computer vision techniques. Deployment in operational defense systems requires:
 
--   Validation on real-world imagery (not synthetic data alone)
--   Integration with existing command & control systems
--   Extensive field testing in various environmental conditions
--   Compliance with relevant regulations and protocols
--   Redundancy and failsafe mechanisms
--   Regular model updates as new UAV types emerge
+- Validation on real-world imagery (not synthetic data alone)
+- Integration with existing command & control systems
+- Extensive field testing in various environmental conditions
+- Compliance with relevant regulations and protocols
+- Redundancy and failsafe mechanisms
+- Regular model updates as new UAV types emerge
 
 ## License
 
@@ -385,7 +395,7 @@ This project is licensed under the MIT License.
 
 ## Acknowledgments
 
--   **Ultralytics** for the YOLO11 implementation
--   **banderastepan** for creating and publishing the synthetic military drone dataset
--   **Streamlit** for the rapid application development framework
--   **Open source computer vision community** for continuous advancement of detection technologies
+- **Ultralytics** for the YOLO11 implementation
+- **banderastepan** for creating and publishing the synthetic military drone dataset
+- **Streamlit** for the rapid application development framework
+- **Open source computer vision community** for continuous advancement of detection technologies

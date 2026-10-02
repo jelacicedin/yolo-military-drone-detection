@@ -7,17 +7,31 @@ import cv2
 import numpy as np
 import tempfile
 import os
+from datetime import datetime
 
 st.set_page_config(page_title="Military Drone Detection", page_icon="🚁", layout="wide")
 
+DEFAULT_MODEL_PATH = os.environ.get("DRONE_MODEL_PATH", "results/military_drone_model/weights/best.pt")
+
 @st.cache_resource
-def load_model():
-    model_path = "results/military_drone_model/weights/best.pt"
-    if not os.path.exists(model_path):
-        st.error("❌ Model not found! Train first: python main.py")
-        return None
-    st.success("✅ Model loaded")
+def _load_weights(model_path, mtime):
+    # mtime is only part of the cache key: when training rewrites best.pt, the
+    # key changes and the new weights are loaded on the next rerun
     return YOLO(model_path)
+
+def load_model(model_path):
+    if not os.path.exists(model_path):
+        st.error(f"❌ Model not found: {model_path}. Train first: python main.py")
+        return None
+    mtime = os.path.getmtime(model_path)
+    try:
+        model = _load_weights(model_path, mtime)
+    except Exception as e:  # e.g. best.pt is being written by a running training
+        st.warning(f"⚠️ Could not load model yet ({e}). Interact with the page to retry.")
+        return None
+    updated = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
+    st.sidebar.caption(f"Model updated: {updated}")
+    return model
 
 def add_overlay_stats(img, boxes, inference_time, tracker_id=None):
     overlay = img.copy()
@@ -55,7 +69,9 @@ def main():
     confidence = st.sidebar.slider("Confidence Threshold", 0.0, 1.0, 0.40, 0.05)
     st.sidebar.info("💡 Recommended: 0.35-0.45 to reduce false positives")
     
-    model = load_model()
+    model_path = st.sidebar.text_input("Model weights", DEFAULT_MODEL_PATH,
+                                       help="Reloaded automatically whenever the file changes (e.g. during training)")
+    model = load_model(model_path)
     if model is None:
         st.stop()
     
@@ -144,7 +160,9 @@ def main():
                         break
                     
                     if enable_tracking:
-                        results = model.track(frame, conf=confidence, persist=True, verbose=False)
+                        # persist=False on the first frame rebuilds the tracker, so state
+                        # (incl. the GMC reference frame) from a previous video is discarded
+                        results = model.track(frame, conf=confidence, persist=frame_count > 0, verbose=False)
                     else:
                         results = model(frame, conf=confidence, verbose=False)
                     
@@ -188,8 +206,13 @@ def main():
                 
                 st.video(output_path)
                 
+                ext = os.path.splitext(output_path)[1]
+                mime = "video/mp4" if ext == ".mp4" else "video/x-msvideo"
+                if ext != ".mp4":
+                    st.warning("H.264 encoder (OpenH264) unavailable - saved as .avi, which browsers usually can't preview. Use the download button.")
+
                 with open(output_path, 'rb') as f:
-                    st.download_button("📥 Download Video", f, "drone_detection.mp4", "video/mp4")
+                    st.download_button("📥 Download Video", f, f"drone_detection{ext}", mime)
     
     # TAB 3: Webcam
     with tab3:
@@ -204,14 +227,17 @@ def main():
             
             tracked_drones = set()
             track_history_webcam = {}
-            
+            webcam_frames = 0
+
             while True:
                 ret, frame = cap.read()
                 if not ret:
                     break
-                
+
                 if enable_webcam_tracking:
-                    results = model.track(frame, conf=confidence, persist=True, verbose=False)
+                    # persist=False on the first frame rebuilds the tracker (see video tab)
+                    results = model.track(frame, conf=confidence, persist=webcam_frames > 0, verbose=False)
+                    webcam_frames += 1
                 else:
                     results = model(frame, conf=confidence, verbose=False)
                 

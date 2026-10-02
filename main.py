@@ -3,8 +3,14 @@
 from ultralytics import YOLO
 import os
 from pathlib import Path
+import argparse
 import shutil
 import random
+
+import torch
+
+SEED = 42
+MODEL_PATH = "results/military_drone_model/weights/best.pt"
 
 def prepare_dataset(source_dir="drone-detection"):
     """
@@ -74,7 +80,9 @@ def prepare_dataset(source_dir="drone-detection"):
     print(f"✅ Verified {len(valid_pairs)} image-label pairs")
     
     # Split dataset: 80% train, 15% val, 5% test
-    random.shuffle(valid_pairs)
+    # Fixed seed + sorted input -> reproducible split
+    valid_pairs.sort(key=lambda pair: pair[0].name)
+    random.Random(SEED).shuffle(valid_pairs)
     
     train_size = int(0.80 * len(valid_pairs))
     val_size = int(0.15 * len(valid_pairs))
@@ -91,6 +99,11 @@ def prepare_dataset(source_dir="drone-detection"):
     # Create output structure
     output_dir = Path("military-drones-dataset")
     
+    # Start from a clean directory. Re-running with a different shuffle on top of
+    # an existing split would leave the same image in several splits (data leakage).
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+    
     for split in ['train', 'valid', 'test']:
         (output_dir / split / 'images').mkdir(parents=True, exist_ok=True)
         (output_dir / split / 'labels').mkdir(parents=True, exist_ok=True)
@@ -100,9 +113,7 @@ def prepare_dataset(source_dir="drone-detection"):
     
     def copy_split(pairs, split_name):
         for img_file, label_file in pairs:
-            # Copy image
             shutil.copy2(img_file, output_dir / split_name / 'images' / img_file.name)
-            # Copy label
             shutil.copy2(label_file, output_dir / split_name / 'labels' / label_file.name)
     
     copy_split(train_pairs, 'train')
@@ -153,22 +164,26 @@ def train_military_drone_detector(data_yaml):
     print("🚀 TRAINING YOLO11 - MILITARY DRONE DETECTION")
     print("=" * 60)
     
+    device = 0 if torch.cuda.is_available() else 'cpu'
+    
     # Load YOLO11 nano model
     model = YOLO('yolo11n.pt')
     
     print("\n📊 Model: YOLO11n")
     print("🎯 Task: Military UAV Detection")
-    print("⚡ Device: GPU (CUDA) if available")
+    print(f"⚡ Device: {'GPU (CUDA)' if device == 0 else 'CPU (no CUDA found)'}")
     
     # Train with optimized parameters for military drones
     results = model.train(
         data=data_yaml,
         epochs=100,              # More epochs for better accuracy
         imgsz=640,              # Matches dataset size
-        batch=16,               # Adjust based on VRAM
-        device=0,               # GPU
+        batch=8,               # Adjust based on VRAM
+        device=device,
+        seed=SEED,
         patience=20,            # Early stopping
         save=True,
+        workers=4,              # Windows: fewer dataloader workers is more stable
         project='results',
         name='military_drone_model',
         
@@ -193,7 +208,7 @@ def train_military_drone_detector(data_yaml):
         warmup_epochs=3,       # Warmup epochs
         
         # Advanced options
-        amp=True,              # Automatic Mixed Precision
+        amp=device == 0,       # Automatic Mixed Precision (CUDA only)
         fraction=1.0,          # Use full dataset
         plots=True,            # Generate plots
         verbose=True,
@@ -207,7 +222,7 @@ def train_military_drone_detector(data_yaml):
 def validate_model():
     """Validate trained model"""
     
-    model_path = "results/military_drone_model/weights/best.pt"
+    model_path = MODEL_PATH
     
     if not os.path.exists(model_path):
         print("❌ Model not found! Train first.")
@@ -220,18 +235,26 @@ def validate_model():
     model = YOLO(model_path)
     metrics = model.val()
     
-    print("\n📊 Performance Metrics:")
+    print("\n📊 Performance Metrics (validation split):")
     print(f"  mAP50:     {metrics.box.map50:.3f}")
     print(f"  mAP50-95:  {metrics.box.map:.3f}")
     print(f"  Precision: {metrics.box.mp:.3f}")
     print(f"  Recall:    {metrics.box.mr:.3f}")
+    
+    # Held-out test split: never used for training or early stopping
+    test_metrics = model.val(split='test')
+    print("\n📊 Performance Metrics (test split):")
+    print(f"  mAP50:     {test_metrics.box.map50:.3f}")
+    print(f"  mAP50-95:  {test_metrics.box.map:.3f}")
+    print(f"  Precision: {test_metrics.box.mp:.3f}")
+    print(f"  Recall:    {test_metrics.box.mr:.3f}")
     
     return metrics
 
 def export_model():
     """Export model for deployment"""
     
-    model_path = "results/military_drone_model/weights/best.pt"
+    model_path = MODEL_PATH
     
     if not os.path.exists(model_path):
         print("❌ Model not found!")
@@ -254,6 +277,12 @@ def export_model():
 def main():
     """Full training pipeline"""
     
+    parser = argparse.ArgumentParser(description="Military drone detection - YOLO11 training pipeline")
+    parser.add_argument("--skip-prepare", action="store_true", help="Reuse existing military-drones-dataset/ instead of re-splitting")
+    parser.add_argument("--skip-train", action="store_true", help="Only validate the existing model")
+    parser.add_argument("--export", action="store_true", help="Export the model to ONNX afterwards")
+    args = parser.parse_args()
+    
     print("=" * 60)
     print("🚁 MILITARY DRONE DETECTION - YOLO11")
     print("=" * 60)
@@ -261,22 +290,25 @@ def main():
     print("Target: Shahed, Lancet, Orlan, and other military UAVs")
     print("=" * 60)
     
-    # Step 1: Prepare dataset
-    data_yaml = prepare_dataset("drone-detection")
-    
-    if data_yaml is None:
-        print("\n❌ Dataset preparation failed. Exiting.")
-        return
-    
-    # Step 2: Train model
-    train_military_drone_detector(data_yaml)
+    if not args.skip_train:
+        # Step 1: Prepare dataset
+        if args.skip_prepare:
+            data_yaml = str(Path("military-drones-dataset") / "data.yaml")
+        else:
+            data_yaml = prepare_dataset("drone-detection")
+        
+        if data_yaml is None or not Path(data_yaml).exists():
+            print("\n❌ Dataset preparation failed. Exiting.")
+            return
+        
+        # Step 2: Train model
+        train_military_drone_detector(data_yaml)
     
     # Step 3: Validate
     validate_model()
     
     # Step 4: Export (optional)
-    export_choice = input("\n📦 Export model to ONNX? (y/n): ")
-    if export_choice.lower() == 'y':
+    if args.export:
         export_model()
     
     print("\n" + "=" * 60)

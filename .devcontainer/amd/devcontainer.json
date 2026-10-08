@@ -1,0 +1,6 @@
+{
+  "name": "Drone Detection — AMD ROCm (7900 XTX)",
+  "dockerComposeFile": "../../docker-compose.yml",
+  "service": "dev-amd",
+  "workspaceFolder": "/app"
+}

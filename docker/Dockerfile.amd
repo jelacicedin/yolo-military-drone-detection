@@ -1,0 +1,25 @@
+# Dev image: YOLO drone detection on AMD GPU (ROCm, RDNA3 / gfx1100 e.g. 7900 XTX)
+# The rocm/pytorch base ships PyTorch 2.8 with the HIP backend — no CUDA deps.
+FROM rocm/pytorch:rocm7.2.4_ubuntu24.04_py3.12_pytorch_release_2.8.0
+
+# libglib is required at runtime by opencv-python (non-headless build)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install deps before copying source so the layer stays cached across code edits
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+# RDNA3 (gfx1100): some ROCm wheels default to an older gfx target;
+# this override is harmless if not needed.
+ENV HSA_OVERRIDE_GFX_VERSION=11.0.0 \
+    PYTHONUNBUFFERED=1
+
+EXPOSE 8501
+
+CMD ["streamlit", "run", "app.py", "--server.headless", "true"]

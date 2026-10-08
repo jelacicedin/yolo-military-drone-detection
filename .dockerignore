@@ -1,0 +1,14 @@
+.git
+.venv
+__pycache__
+*.pyc
+results/
+runs/
+drone-detection/
+military-drones-dataset/
+videos/
+images/
+*.pt
+*.onnx
+*.mp4
+*.avi

@@ -1,0 +1,22 @@
+# Dev image: YOLO drone detection on NVIDIA GPU (CUDA 12.8)
+# The pytorch/pytorch CUDA base ships PyTorch with the cu128 build preinstalled.
+FROM pytorch/pytorch:2.8.0-cuda12.8-cudnn9-devel
+
+# libglib is required at runtime by opencv-python (non-headless build)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install deps before copying source so the layer stays cached across code edits
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+ENV PYTHONUNBUFFERED=1
+
+EXPOSE 8501
+
+CMD ["streamlit", "run", "app.py", "--server.headless", "true"]

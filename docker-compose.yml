@@ -1,0 +1,48 @@
+name: drone-detection
+
+# Two mutually exclusive dev containers (select one with --profile):
+#   AMD     -> docker compose --profile amd up dev-amd
+#   NVIDIA  -> docker compose --profile nvidia up dev-nvidia
+# The app listens on :8501; model weights persist in ./results.
+
+services:
+  dev-amd:
+    profiles: ["amd"]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.amd
+    image: drone-detect:amd
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./results:/app/results
+    # ROCm needs the kernel driver nodes (and matching host groups)
+    devices:
+      - /dev/kfd:/dev/kfd
+      - /dev/dri:/dev/dri
+    group_add:
+      - video
+      - render
+    shm_size: "4gb"
+    command: ["streamlit", "run", "app.py", "--server.headless", "true"]
+
+  dev-nvidia:
+    profiles: ["nvidia"]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.nvidia
+    image: drone-detect:nvidia
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./results:/app/results
+    # Requires nvidia-container-toolkit on the host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    shm_size: "4gb"
+    command: ["streamlit", "run", "app.py", "--server.headless", "true"]

@@ -41,7 +41,54 @@ The model is trained to identify the following military drone platforms:
 
 ## Getting Started
 
-This project requires Python 3.11+ and uses `uv` for fast dependency management.
+You have two options:
+
+- **[Docker (recommended)](#docker-dev-container-recommended)** — zero local setup, works on both AMD ROCm and NVIDIA CUDA GPUs
+- [Native Python install](#native-python-install)
+
+---
+
+## Docker Dev Container (Recommended)
+
+Everything runs in a container — no local Python, PyTorch, or GPU driver stack needed beyond your OS's GPU drivers (`rocm-dkms` on AMD Linux, `nvidia-container-toolkit` on NVIDIA hosts).
+
+```bash
+# Build (pick your GPU vendor)
+docker compose --profile amd build      # AMD / ROCm  (e.g. RX 7900 XTX)
+docker compose --profile nvidia build   # NVIDIA / CUDA 12.8
+
+# Verify the GPU is visible and measure throughput
+docker compose --profile amd run dev-amd python docker/verify_gpu.py
+
+# Train
+docker compose --profile amd run dev-amd python main.py
+
+# Serve the web app on http://localhost:8501
+docker compose --profile amd up dev-amd
+```
+
+Swap `--profile amd` for `--profile nvidia` (and `dev-amd` → `dev-nvidia`) on NVIDIA hardware.
+
+**How it works:**
+
+| | AMD | NVIDIA |
+|---|---|---|
+| Base image | `rocm/pytorch:rocm7.2.4_ubuntu24.04_py3.12_pytorch_release_2.8.0` (PyTorch + ROCm/HIP) | `pytorch/pytorch:2.8.0-cuda12.8-cudnn9-devel` |
+| GPU access | `/dev/kfd` + `/dev/dri` device mapping | `nvidia-container-toolkit` (`--gpus`) |
+| Dockerfile | [`docker/Dockerfile.amd`](docker/Dockerfile.amd) | [`docker/Dockerfile.nvidia`](docker/Dockerfile.nvidia) |
+
+Trained weights land in `./results/` on the host (volume-mounted), so they survive rebuilds and are shared between both profiles.
+
+**VS Code:** with the Dev Containers extension, use *Add Existing Docker Compose Service…* and pick `.devcontainer/amd/devcontainer.json` or `.devcontainer/nvidia/devcontainer.json` — you get a full IDE inside the container.
+
+---
+
+## Native Python Install
+
+Requires Python 3.11+; uses `uv` for fast dependency management. Note that `torch` must be installed from the index matching your GPU **before** the rest of `requirements.txt`:
+
+- **NVIDIA:** `pip install torch==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cu128`
+- **AMD:** `pip install torch torchvision --index-url https://download.pytorch.org/whl/rocm6.3` (on RDNA3, `export HSA_OVERRIDE_GFX_VERSION=11.0.0` if PyTorch can't find the GPU)
 
 ### 1. Clone the repository
 

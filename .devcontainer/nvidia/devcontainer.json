@@ -1,0 +1,6 @@
+{
+  "name": "Drone Detection — NVIDIA CUDA",
+  "dockerComposeFile": "../../docker-compose.yml",
+  "service": "dev-nvidia",
+  "workspaceFolder": "/app"
+}
